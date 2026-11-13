@@ -18,6 +18,8 @@ export type Feature = {
   why?: string;
   before?: string;
   after?: string;
+  /** What the person will actually see on screen: "You'll see:" in the file. */
+  youSee?: string;
   steps: string[];
   misconceptions: Misconception[];
   limits: string[];
@@ -34,7 +36,17 @@ export type Release = {
 
 export type QuestionKind =
   | "behaviour"
+  /** Where in the system the change shows up. */
+  | "whereToSee"
   | "misconception"
+  /** A single statement to accept or reject. */
+  | "trueFalse"
+  /** The whole job from start to finish, in the right order. */
+  | "stepOrder"
+  /** What you do first. */
+  | "firstStep"
+  /** What happens straight after one step. */
+  | "nextStep"
   | "limit"
   | "step"
   | "mustKnow"

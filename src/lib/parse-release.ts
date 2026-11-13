@@ -13,13 +13,53 @@ function isListItem(raw: string): boolean {
   return /^\s*([-*+]\s+|\d+[.)]\s+)/.test(raw);
 }
 
-/** Labels we understand, each with the aliases an author might type. */
+/**
+ * Labels we understand, each with the aliases an author might type.
+ *
+ * The short template asks for four of these — "What's new", "You'll see",
+ * "Instead of" and "Remember" — but the longer labels an older file used still
+ * work, so nothing already written has to be rewritten.
+ */
 const LABELS: Record<string, string[]> = {
-  whatChanged: ["what changed", "what it does", "change", "what is new", "summary"],
+  whatChanged: ["what changed", "change", "summary"],
   why: ["why", "why we changed it", "reason"],
-  before: ["before", "old behaviour", "old behavior", "previously"],
-  after: ["after", "new behaviour", "new behavior", "now"],
-  steps: ["steps", "steps to use it", "how to use", "how it works"],
+  before: [
+    "before",
+    "instead of",
+    "old behaviour",
+    "old behavior",
+    "previously",
+    "today",
+    "until now",
+  ],
+  after: [
+    "after",
+    "what's new",
+    "whats new",
+    "what is new",
+    "what it does",
+    "new behaviour",
+    "new behavior",
+    "now",
+  ],
+  youSee: [
+    "you'll see",
+    "youll see",
+    "you will see",
+    "what you see",
+    "where",
+    "where to find it",
+    "where it appears",
+  ],
+  steps: [
+    "steps",
+    "steps to use it",
+    "how to use",
+    "how it works",
+    "flow",
+    "full flow",
+    "end to end",
+  ],
   misconception: [
     "misconception",
     "what people will get wrong",
@@ -33,12 +73,25 @@ const LABELS: Record<string, string[]> = {
 function matchLabel(text: string): { key: string; value: string } | null {
   const sep = text.indexOf(":");
   if (sep === -1) return null;
-  const label = text.slice(0, sep).trim().toLowerCase();
+  // Word processors turn ' into ’, so "You’ll see" has to match "you'll see".
+  const label = text
+    .slice(0, sep)
+    .trim()
+    .toLowerCase()
+    .replace(/[\u2018\u2019\u02bc]/g, "'");
   const value = text.slice(sep + 1).trim();
   for (const [key, aliases] of Object.entries(LABELS)) {
     if (aliases.includes(label)) return { key, value };
   }
   return null;
+}
+
+/** "Open Vouchers > name it > Save" becomes three steps, in order. */
+function splitFlow(value: string): string[] {
+  return value
+    .split(/\s*(?:->|-->|=>|>|\u2192|\u279c)\s*/)
+    .map((part) => part.replace(/^\d+[.)]\s*/, "").trim())
+    .filter(Boolean);
 }
 
 function slug(text: string, fallback: string): string {
@@ -178,8 +231,12 @@ export function parseRelease(markdown: string): Release {
       case "after":
         current.after = value;
         break;
+      case "youSee":
+        current.youSee = value;
+        break;
       case "steps":
-        if (value) current.steps.push(value);
+        // One line can carry the whole cycle: "Open X > fill in Y > Save".
+        if (value) current.steps.push(...splitFlow(value));
         collecting = "steps";
         break;
       case "misconception":
@@ -226,6 +283,7 @@ function hasContent(f: Feature): boolean {
     f.whatChanged ||
       f.before ||
       f.after ||
+      f.youSee ||
       f.steps.length ||
       f.misconceptions.length ||
       f.limits.length ||

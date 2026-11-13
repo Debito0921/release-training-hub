@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ code: string }> },
 ) {
   const { code } = await params;
-  const session = getSessionByCode(code);
+  const session = await getSessionByCode(code);
   if (!session) {
     return NextResponse.json(
       { error: "That code does not match any session. Check the screen and try again." },

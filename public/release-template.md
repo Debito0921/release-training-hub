@@ -4,50 +4,73 @@ Go-live: 28 Nov 2026
 Departments: Sales, Support, Finance, HR
 Pass mark: 70
 
-## Feature: Name of the first feature
+## Name of the first feature
 
-What changed: One sentence on what is different now.
-Why: The problem this solves. Helps the workshop, not the quiz.
-Before: How it worked in the old release.
-After: How it works from this release. This becomes a question.
-Steps:
-- First thing the user does.
-- Second thing the user does.
-Misconception: What people wrongly believe. || What is actually true.
-Misconception: Another wrong belief. || The truth.
-Misconception: A third wrong belief. || The truth.
-Limit: Something this feature still cannot do.
-Must-know: The one line they must remember.
+What's new: One short sentence on what is different now.
+You'll see: What they will notice on screen, and where.
+Steps: Open the page > fill in the details > Save > what the end user sees
+Instead of: The old way. This is never asked, it is used as a wrong answer.
+Remember: The one thing they must not get wrong.
 
-## Feature: Name of the second feature
+## Name of the second feature
 
-What changed: One sentence on what is different now.
-Why: The problem this solves.
-Before: How it worked in the old release.
-After: How it works from this release.
-Steps:
-- First thing the user does.
-- Second thing the user does.
-Misconception: What people wrongly believe. || What is actually true.
-Misconception: Another wrong belief. || The truth.
-Limit: Something this feature still cannot do.
-Must-know: The one line they must remember.
+What's new: One short sentence on what is different now.
+You'll see: What they will notice on screen, and where.
+Steps: First step > second step > third step > what happens at the end
+Instead of: The old way.
+Remember: The one thing they must not get wrong.
+
+## Name of the third feature
+
+What's new: One short sentence on what is different now.
+You'll see: What they will notice on screen, and where.
+Instead of: The old way.
+Remember: The one thing they must not get wrong.
 
 ## Checklist
 
-Everything below this heading is ignored when the file is uploaded, so notes
-for yourself are safe here.
+Everything below this heading is ignored when the file is uploaded, so notes to
+yourself are safe here.
 
-- One `## Feature:` heading per feature. Each one becomes a round in the quiz.
-- `After:` makes the "what happens now" question.
-- Each `Misconception:` needs the `||` in the middle: wrong belief on the left,
-  the truth on the right. These make the best questions, because the wrong
-  answers are the mistakes staff really make.
-- Aim for 2 to 3 misconceptions per feature. With fewer than 2, the quiz warns
-  you that the question is too easy to guess.
-- `Limit:` and `Must-know:` each make one more question.
-- Up to 4 questions are built per feature, so 3 features is about 12 questions,
-  which is around 5 minutes of play.
-- Labels are not case sensitive, and these also work: "What it does", "Now",
-  "Previously", "How to use", "Common mistake", "Edge case", "Key point".
+- One `##` heading per feature. Each one becomes a round in the quiz.
+- Four or five lines per feature is enough. This is a "what is coming" quiz,
+  not an exam.
+- Keep every line **under about 15 words**. The answers are read on a phone, and
+  a long right answer next to short wrong ones is easy to spot without knowing
+  anything.
+- Be concrete: numbers, where it appears, and whether the system does it for you
+  are what the quiz turns into wrong answers. "Scores update every night" makes a
+  real question; "improved performance" makes nothing.
+- 3 features × about 4 to 6 questions is a 5 to 8 minute quiz.
 - Anything without a label in front of it is ignored, so write freely.
+
+### The `Steps:` line is the important one
+
+`Steps:` is the whole job from start to finish, with `>` between the steps.
+Write it for anything a person has to **do**, not just notice:
+
+```
+Steps: Open Vouchers > name it and set the condition > Save > staff pick it at checkout
+```
+
+From that one line the quiz asks for the correct order, where the job starts,
+and what comes straight after a step. Those are the questions that show whether
+somebody could really sit down and do it.
+
+- **3 to 5 steps.** Two is not a flow, six is a manual.
+- **About 5 words per step**, so the whole flow still fits on a phone.
+- End with what the **end user** or the next person sees, not with "Save". Half
+  of all mistakes happen after the save.
+
+### Want a harder quiz?
+
+Add a `Misconception:` line, with the wrong belief on the left of `||` and the
+truth on the right. Real mistakes make the best wrong answers.
+
+```
+Misconception: The score is set by hand. || The system sets it every night.
+```
+
+`Limit:` (something it still cannot do) also works, and so do the longer labels
+an older file used: `What changed`, `Why`, `Before`, `After`, `Steps`,
+`Must-know`.

@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
+import { getAccount } from "@/lib/account";
 import { createSession, getModule } from "@/lib/store";
 
 export async function POST(request: Request) {
+  // The room is saved against whoever is running it, so a host only ever sees
+  // their own rooms in the results.
+  const account = await getAccount();
+  if (!account) {
+    return NextResponse.json({ error: "Please sign in again." }, { status: 401 });
+  }
+
   const body = await request.json().catch(() => null);
   const moduleId = body?.moduleId;
   const module =
@@ -15,6 +23,9 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  const session = createSession(moduleId);
+  const session = await createSession(moduleId, account.id);
+  if ("error" in session) {
+    return NextResponse.json({ error: session.error }, { status: 400 });
+  }
   return NextResponse.json({ session });
 }

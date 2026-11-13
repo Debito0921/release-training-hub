@@ -13,7 +13,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const session = getSession(id);
+  const session = await getSession(id);
   if (!session) {
     return NextResponse.json({ error: "Session not found." }, { status: 404 });
   }
@@ -76,7 +76,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const session = getSession(id);
+  const session = await getSession(id);
   if (!session) {
     return NextResponse.json({ error: "Session not found." }, { status: 404 });
   }
@@ -85,9 +85,9 @@ export async function POST(
   const action = body?.action;
 
   if (action === "open" && typeof body?.round === "number") {
-    openRound(id, body.round);
+    await openRound(id, body.round);
   } else if (action === "close" && typeof body?.round === "number") {
-    closeRound(id, body.round);
+    await closeRound(id, body.round);
   } else if (action === "end") {
     await endSession(id);
   } else {

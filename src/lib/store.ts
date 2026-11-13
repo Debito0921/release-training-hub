@@ -1,5 +1,16 @@
 import { buildRounds, generateQuestions } from "./generate-quiz";
 import {
+  addLivePlayer,
+  createLiveSession,
+  endLiveSession,
+  getLiveSession,
+  getLiveSessionByCode,
+  isDbId,
+  listLiveSessions,
+  recordLiveAnswer,
+  setLiveRounds,
+} from "./live";
+import {
   createDbModule,
   getDbModule,
   listDbModules,
@@ -10,14 +21,16 @@ import { STAFF } from "./staff";
 import type { Answer, Department, ReleaseModule, Session } from "./types";
 
 /**
- * Real releases live in Supabase (see library.ts). This in-memory store holds
- * live sessions, plus the made-up past releases that give the results
- * dashboard something to show. Demo data stays out of the database on purpose,
- * so the real library only ever contains the team's own work.
+ * Real releases live in Supabase (see library.ts) and so do real live rooms
+ * (see live.ts). This in-memory store holds only the made-up past releases
+ * that give the results dashboard something to show, and their finished rooms.
+ * Demo data stays out of the database on purpose, so the real library and the
+ * real results only ever contain the team's own work.
  */
 type Store = {
   /** Demo releases only. Real ones are read from the database. */
   modules: ReleaseModule[];
+  /** Finished demo rooms only. Real ones are read from the database. */
   sessions: Session[];
   seeded: boolean;
 };
@@ -38,23 +51,6 @@ export function getStore(): Store {
     seedHistory(store);
   }
   return store;
-}
-
-function randomId(prefix: string): string {
-  return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
-}
-
-/** Short code for the QR link, easy to read out loud if the camera fails. */
-function makeCode(existing: string[]): string {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  for (let attempt = 0; attempt < 50; attempt += 1) {
-    let code = "";
-    for (let i = 0; i < 5; i += 1) {
-      code += alphabet[Math.floor(Math.random() * alphabet.length)];
-    }
-    if (!existing.includes(code)) return code;
-  }
-  return `${Date.now()}`.slice(-5);
 }
 
 export function createModule(
@@ -93,35 +89,38 @@ export async function setQuestionIncluded(
   await setDbQuestionIncluded(moduleId, questionId, included);
 }
 
-export function createSession(moduleId: string): Session {
-  const store = getStore();
-  const session: Session = {
-    id: randomId("ses"),
-    code: makeCode(store.sessions.map((s) => s.code)),
-    moduleId,
-    status: "lobby",
-    openRounds: [],
-    closedRounds: [],
-    players: [],
-    answers: [],
-    createdAt: Date.now(),
-  };
-  store.sessions.unshift(session);
-  return session;
+export async function createSession(
+  moduleId: string,
+  hostId: string,
+): Promise<Session | { error: string }> {
+  if (!isDbId(moduleId)) {
+    return {
+      error: "This is a sample release. Upload or write your own to host it.",
+    };
+  }
+  return createLiveSession(moduleId, hostId);
 }
 
-export function getSession(id: string): Session | undefined {
+function demoSession(id: string): Session | undefined {
   return getStore().sessions.find((s) => s.id === id);
 }
 
-export function getSessionByCode(code: string): Session | undefined {
-  return getStore().sessions.find(
-    (s) => s.code.toUpperCase() === code.toUpperCase(),
+export async function getSession(id: string): Promise<Session | undefined> {
+  return demoSession(id) ?? (await getLiveSession(id));
+}
+
+export async function getSessionByCode(
+  code: string,
+): Promise<Session | undefined> {
+  const wanted = code.trim().toUpperCase();
+  return (
+    getStore().sessions.find((s) => s.code.toUpperCase() === wanted) ??
+    (await getLiveSessionByCode(wanted))
   );
 }
 
-export function listSessions(): Session[] {
-  return getStore().sessions;
+export async function listSessions(): Promise<Session[]> {
+  return [...(await listLiveSessions()), ...getStore().sessions];
 }
 
 export const ALL_DEPARTMENTS: Department[] = [
@@ -140,21 +139,15 @@ export const SIGNUP_DEPARTMENTS: Department[] = ALL_DEPARTMENTS.filter(
   (d) => d !== "Product",
 );
 
-export function addPlayer(
+export async function addPlayer(
   sessionId: string,
   rawName: string,
   rawDepartment: string,
   /** Set when they said "that's me" to somebody on the staff list. */
   person?: { id: string; name: string; department: Department },
 ) {
-  const session = getSession(sessionId);
+  const session = await getSession(sessionId);
   if (!session) return { error: "That session no longer exists." } as const;
-
-  if (person && session.players.some((p) => p.staffId === person.id)) {
-    return {
-      error: "That person has already joined this room from another phone.",
-    } as const;
-  }
 
   const name = (person?.name ?? rawName).trim().replace(/\s+/g, " ");
   if (name.length < 2) {
@@ -170,24 +163,20 @@ export function addPlayer(
     return { error: "Please tap your department." } as const;
   }
 
-  const taken = session.players.some(
-    (p) => p.name.toLowerCase() === name.toLowerCase(),
-  );
-  if (taken) {
+  // Checked here for a friendly message, and again by the database, which is
+  // the only place that can settle two phones joining at the same moment.
+  if (session.players.some((p) => p.name.toLowerCase() === name.toLowerCase())) {
     return {
       error: "Somebody in this room already used that name. Add your surname or initial.",
     } as const;
   }
+  if (person && session.players.some((p) => p.staffId === person.id)) {
+    return {
+      error: "That person has already joined this room from another phone.",
+    } as const;
+  }
 
-  const player = {
-    id: randomId("ply"),
-    staffId: person?.id,
-    name,
-    department,
-    joinedAt: Date.now(),
-  };
-  session.players.push(player);
-  return { player } as const;
+  return addLivePlayer(sessionId, name, department, person?.id);
 }
 
 export async function recordAnswer(
@@ -196,7 +185,7 @@ export async function recordAnswer(
   questionId: string,
   optionIndex: number,
 ): Promise<{ ok: true } | { error: string }> {
-  const session = getSession(sessionId);
+  const session = await getSession(sessionId);
   if (!session) return { error: "That session no longer exists." };
   const module = await getModule(session.moduleId);
   if (!module) return { error: "That release module no longer exists." };
@@ -218,42 +207,51 @@ export async function recordAnswer(
   );
   if (already) return { error: "You have already answered that question." };
 
-  session.answers.push({
+  return recordLiveAnswer(
+    sessionId,
     playerId,
     questionId,
     optionIndex,
-    correct: optionIndex === question.correctIndex,
-    attemptNo: 1,
-    answeredAt: Date.now(),
+    optionIndex === question.correctIndex,
+  );
+}
+
+export async function openRound(sessionId: string, index: number): Promise<void> {
+  const session = await getSession(sessionId);
+  if (!session) return;
+  await setLiveRounds(
+    sessionId,
+    {
+      open: [...new Set([...session.openRounds, index])],
+      // Re-opening a round the host closed by mistake has to clear it again.
+      closed: session.closedRounds.filter((i) => i !== index),
+    },
+    "live",
+  );
+}
+
+export async function closeRound(sessionId: string, index: number): Promise<void> {
+  const session = await getSession(sessionId);
+  if (!session) return;
+  await setLiveRounds(sessionId, {
+    open: session.openRounds,
+    closed: [...new Set([...session.closedRounds, index])],
   });
-  return { ok: true };
-}
-
-export function openRound(sessionId: string, index: number): void {
-  const session = getSession(sessionId);
-  if (!session) return;
-  if (!session.openRounds.includes(index)) session.openRounds.push(index);
-  session.closedRounds = session.closedRounds.filter((i) => i !== index);
-  session.status = "live";
-}
-
-export function closeRound(sessionId: string, index: number): void {
-  const session = getSession(sessionId);
-  if (!session) return;
-  if (!session.closedRounds.includes(index)) session.closedRounds.push(index);
 }
 
 export async function endSession(sessionId: string): Promise<void> {
-  const session = getSession(sessionId);
+  const session = await getSession(sessionId);
   if (!session) return;
-  session.status = "ended";
-  session.endedAt = Date.now();
   const module = await getModule(session.moduleId);
-  if (module) {
-    module.rounds.forEach((r) => {
-      if (!session.closedRounds.includes(r.index)) session.closedRounds.push(r.index);
-    });
-  }
+  // Nothing stays open once the room is closed, or a late phone could still
+  // answer after the scores were read out.
+  const closed = [
+    ...new Set([
+      ...session.closedRounds,
+      ...(module?.rounds.map((r) => r.index) ?? []),
+    ]),
+  ];
+  await endLiveSession(sessionId, closed);
 }
 
 export function scoreFor(session: Session, playerId: string) {

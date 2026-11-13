@@ -22,7 +22,12 @@ import type { Question, ReleaseModule } from "@/lib/types";
 
 const KIND_LABEL: Record<string, string> = {
   behaviour: "New behaviour",
+  whereToSee: "Where to see it",
   misconception: "Misconception",
+  trueFalse: "True or false",
+  stepOrder: "Full flow",
+  firstStep: "First step",
+  nextStep: "Next step",
   limit: "Limit",
   step: "Steps",
   mustKnow: "Must-know",

@@ -29,6 +29,7 @@ type FeatureRow = {
   why: string | null;
   before_text: string | null;
   after_text: string | null;
+  you_see: string | null;
   steps: string[];
   misconceptions: { wrong: string; truth?: string }[];
   limits: string[];
@@ -52,7 +53,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MODULE_COLUMNS =
   "id, owner_id, title, go_live, departments, pass_mark, status, created_at";
 const FEATURE_COLUMNS =
-  "id, position, name, what_changed, why, before_text, after_text, steps, misconceptions, limits, must_know";
+  "id, position, name, what_changed, why, before_text, after_text, you_see, steps, misconceptions, limits, must_know";
 const QUESTION_COLUMNS =
   "id, feature_id, position, kind, stem, options, correct_index, included, warning";
 
@@ -64,6 +65,7 @@ function toFeature(row: FeatureRow): Feature {
     why: row.why ?? undefined,
     before: row.before_text ?? undefined,
     after: row.after_text ?? undefined,
+    youSee: row.you_see ?? undefined,
     steps: row.steps,
     misconceptions: row.misconceptions,
     limits: row.limits,
@@ -172,6 +174,7 @@ export async function createDbModule(
         why: feature.why ?? null,
         before_text: feature.before ?? null,
         after_text: feature.after ?? null,
+        you_see: feature.youSee ?? null,
         steps: feature.steps,
         misconceptions: feature.misconceptions,
         limits: feature.limits,

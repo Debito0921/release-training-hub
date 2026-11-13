@@ -8,7 +8,7 @@ const pct = (part: number, whole: number) =>
 
 export async function GET() {
   // Only finished sessions count towards the official numbers.
-  const sessions = listSessions()
+  const sessions = (await listSessions())
     .filter((s) => s.status === "ended")
     .sort((a, b) => a.createdAt - b.createdAt);
 

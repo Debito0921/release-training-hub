@@ -6,7 +6,7 @@ Built for an HR management system (HRMS) product team whose monthly releases hav
 
 **Live:** [release-training-hub.vercel.app](https://release-training-hub.vercel.app) — the library and the join screen are open to anyone; the host console and the results dashboard need a host account.
 
-> Status: working internal tool, built as a portfolio project. The release library, accounts and permissions live in Supabase; live sessions are run from a single host screen.
+> Status: working internal tool, built as a portfolio project. The release library, accounts, permissions and live sessions all live in Supabase, so a quiz can be hosted from the deployed site and joined from any phone.
 
 ---
 
@@ -31,7 +31,7 @@ Every month the product team ships enhancements to the HRMS, runs a workshop for
 
 **For everyone else (players)**
 
-- **Join from a phone in two taps.** Scan the QR code, type your name, pick your department. No account, no password.
+- **Join from a phone in two taps.** Scan the QR code, type your name, pick your department. No account, no password, and no need to be on the host's Wi-Fi: the QR points at the deployed site, and only falls back to a LAN address when the app is being run from the host's own laptop.
 - **"Is this you?"** While you type, the app offers matching names from the staff list. Tapping one ties the session to that person, so your history follows you from one release to the next.
 - **Practise alone.** Any saved release can be replayed solo from the library, as often as you like. Practice runs are deliberately **not** recorded.
 
@@ -61,7 +61,7 @@ Markdown release note ──▶ parse ──▶ rounds + questions ──▶ lib
 - **Release parsing** (`src/lib/parse-release.ts`) reads a structured Markdown template: one heading per feature, with what changed, who it affects, and the before/after behaviour.
 - **Question generation** (`src/lib/generate-quiz.ts`) is deterministic. It builds different question kinds out of the facts in the note — what changed, who is affected, what the old behaviour was — and flags anything it is unsure about so the host reviews it before saving.
 - **The library** (`src/lib/library.ts`) stores releases, features and questions in Supabase, with a `draft` → `ready` status so an unfinished release cannot be hosted.
-- **Live sessions** (`src/lib/store.ts`) are held in memory on the server: rounds, players, answers, leaderboard. A finished session is what feeds the results dashboard.
+- **Live sessions** (`src/lib/live.ts`) are rows in Postgres: the room, who joined, every answer. They started out in memory, which only works while one machine serves everybody — on a platform that runs several servers, a player's phone can land on one that never heard of the room. The database also settles the races one process used to settle for free: two phones claiming the same name, or one phone sending the same tap twice.
 - **Accounts and permissions** use Supabase Auth. The first account becomes the admin; everyone else registers as a player, and an admin promotes the product team to `host`. Middleware (`src/middleware.ts`) keeps host-only pages and APIs closed while everything a player needs stays open.
 - **Row Level Security** is on for every table with no public policies, so the database is only ever reached through the app's own server routes.
 
@@ -96,7 +96,7 @@ Eight tables, created by the migrations in `supabase/migrations/`:
 | `modules` | A release: title, go-live date, pass mark, target departments, status |
 | `features` | The sections of a release; each one becomes a round |
 | `questions` | Stem, options, correct answer, kind, and whether it is included |
-| `sessions`, `session_rounds`, `session_players`, `answers` | A run of a quiz and what people answered |
+| `sessions`, `session_players`, `answers` | A room, who joined it, and what they answered. `session_players.person_id` is how a typed name is tied back to a real person |
 
 ## Running it yourself
 
@@ -124,7 +124,6 @@ The first account you register becomes the admin.
 
 ## What is next
 
-- Move live sessions into Postgres so a host can refresh mid-session
 - Flag a question back to its author when the correct-rate stays low across releases
 - A one-click wipe of the sample history before the first real release
 

@@ -84,6 +84,14 @@ export function HostConsole({ sessionId }: { sessionId: string }) {
   }, [load]);
 
   useEffect(() => {
+    // The Wi-Fi address is only needed when the app runs on this laptop, where
+    // "localhost" means nothing to a phone. Once it is published, the public
+    // address works from any network, so we must not swap it for a LAN IP.
+    const local = ["localhost", "127.0.0.1", "[::1]"].includes(
+      window.location.hostname,
+    );
+    if (!local) return;
+
     fetch("/api/network", { cache: "no-store" })
       .then((r) => r.json())
       .then((n: { best: string | null; port: string }) => {

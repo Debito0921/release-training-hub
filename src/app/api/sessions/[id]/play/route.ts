@@ -8,7 +8,7 @@ export async function GET(
   const { id } = await params;
   const playerId = new URL(request.url).searchParams.get("playerId") ?? "";
 
-  const session = getSession(id);
+  const session = await getSession(id);
   if (!session) {
     return NextResponse.json({ error: "Session not found." }, { status: 404 });
   }

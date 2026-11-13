@@ -7,11 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const PROMPT = `Rewrite our release notes into the Release Training Hub format below, so I can upload the file and it builds a quiz.
 
+This quiz is only so staff know what is coming and what improved. It is not an exam, so keep it simple and general.
+
 Rules:
-- One "## Feature:" heading per feature.
-- Keep our own wording. Do not invent anything that is not in my notes.
-- Write 2 to 3 Misconception lines per feature, in the form "wrong belief || what is actually true". These must be mistakes Sales, Support, Finance or HR would really make after the workshop, not obvious ones.
-- Every line must start with one of the labels. Anything without a label is dropped.
+- One "##" heading per feature, named the way staff would say it.
+- Only these five lines per feature, in this order. No other lines.
+- Add the "Steps:" line for any feature where somebody has to do something, not just notice it. Separate the steps with ">", 3 to 5 steps, about 5 words each, and end with what the end user or the next person sees. Leave the line out for a feature that only changes what people see.
+- Keep every line under 15 words. The answers are read on a phone.
+- Be concrete where my notes are concrete: numbers, where it appears on screen, and whether the system does it automatically. Those are what make real questions.
+- Keep our own wording and do not invent anything that is not in my notes. If a line is not in my notes, leave it out.
 - Save it as one .md file.
 
 Format:
@@ -22,19 +26,13 @@ Go-live: <date>
 Departments: Sales, Support, Finance, HR
 Pass mark: 70
 
-## Feature: <feature name>
+## <feature name>
 
-What changed: <one sentence>
-Why: <the problem it solves>
-Before: <the old way>
-After: <the new way>
-Steps:
-- <step>
-- <step>
-Misconception: <wrong belief> || <what is actually true>
-Misconception: <wrong belief> || <what is actually true>
-Limit: <what it still cannot do>
-Must-know: <the one line they must remember>
+What's new: <one short sentence on what is different now>
+You'll see: <what they will notice on screen, and where>
+Steps: <first step> > <next step> > <next step> > <what the end user sees>
+Instead of: <the old way>
+Remember: <the one thing they must not get wrong>
 
 Here are our release notes:
 `;
