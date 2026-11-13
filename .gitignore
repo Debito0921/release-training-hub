@@ -41,8 +41,12 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# local Supabase CLI stack
-supabase/
+# local Supabase CLI stack, but keep the schema migrations
+supabase/*
+!supabase/migrations/
+
+# the agent's local dev-server config
+.claude/
 
 # course page log written by npm run finish / doctor
 class-dev.log

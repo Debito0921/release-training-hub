@@ -1,44 +1,161 @@
-// Setup check page: if this opens at localhost:3000, the development environment is ready.
-// What this project grows into is set by "What this project is" in AGENTS.md.
-export default function Home() {
+import Link from "next/link";
+import {
+  BarChart3,
+  BookOpen,
+  FileUp,
+  QrCode,
+  Sparkles,
+  Users,
+} from "lucide-react";
+import { AppShell } from "@/components/app-shell";
+import { canHost, getAccount } from "@/lib/account";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+const STEPS = [
+  {
+    icon: FileUp,
+    title: "1 · Upload the release notes",
+    body: "Drop in the release file you wrote for the workshop. One markdown file, that is all.",
+  },
+  {
+    icon: Sparkles,
+    title: "2 · Questions appear",
+    body: "Questions are built straight from your notes, using the real misconceptions as the wrong answers.",
+  },
+  {
+    icon: QrCode,
+    title: "3 · They scan and play",
+    body: "Put the QR code on screen at the end of your workshop. Staff join on their phones, no password.",
+  },
+  {
+    icon: BarChart3,
+    title: "4 · You see what landed",
+    body: "Pass rate by release, by department, and the exact questions people got wrong.",
+  },
+];
+
+export default async function Home() {
+  const isHost = canHost((await getAccount())?.role);
+
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-50 via-white to-violet-100 px-6 font-sans">
-      {/* Background glow */}
-      <div className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-indigo-200/40 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-violet-200/40 blur-3xl" />
-
-      <div className="relative w-full max-w-xl rounded-3xl border border-white/60 bg-white/80 p-10 text-center shadow-2xl shadow-indigo-200/50 backdrop-blur-sm sm:p-14">
-        <div className="mx-auto mb-8 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-300/60">
-          <svg viewBox="0 0 24 24" fill="none" className="h-10 w-10 text-white" strokeWidth={3} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-          </svg>
-        </div>
-
-        <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl">
-          Congrats! 🎉
-        </h1>
-        <p className="mt-4 text-lg font-medium text-gray-700">
-          You have successfully set up the development environment.
+    <AppShell>
+      <section className="mb-10 text-center sm:mb-14">
+        <p className="mb-3 inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
+          <Sparkles className="size-3.5 text-primary" />
+          HR management system · product release training
         </p>
-
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
-          {["Node.js is running", "Dependencies installed", "Dev server is running"].map((t) => (
-            <span
-              key={t}
-              className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3.5 py-1.5 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200"
+        <h1 className="mx-auto max-w-3xl font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight sm:text-5xl">
+          Turn release notes into a quiz your team actually remembers
+        </h1>
+        <p className="mx-auto mt-4 max-w-xl text-sm text-muted-foreground sm:text-base">
+          Run your workshop as usual. Then put a QR code on the screen and find
+          out, in five minutes, who really understood the new release.
+        </p>
+        <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          {isHost ? (
+            <Button
+              nativeButton={false} render={<Link href="/host" />}
+              size="lg"
+              className="w-full sm:w-auto"
             >
-              <span aria-hidden>✓</span> {t}
-            </span>
-          ))}
+              <FileUp className="size-4" />
+              Upload a release
+            </Button>
+          ) : null}
+          <Button
+            nativeButton={false} render={<Link href="/join" />}
+            size="lg"
+            variant={isHost ? "outline" : "default"}
+            className="w-full sm:w-auto"
+          >
+            <Users className="size-4" />
+            Join a quiz
+          </Button>
         </div>
+      </section>
 
-        <div className="mt-10 border-t border-gray-100 pt-6 text-sm leading-relaxed text-gray-500">
-          Next step: <span className="font-semibold text-gray-700">open this folder in your coding agent</span>
-          {" "}and tell it what you want to build.
-          <br />
-          This is where we start 👋
-        </div>
-      </div>
-    </main>
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {STEPS.map((step) => (
+          <Card key={step.title} className="h-full">
+            <CardHeader>
+              <span className="mb-1 flex size-9 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+                <step.icon className="size-4" />
+              </span>
+              <CardTitle className="text-sm font-semibold">
+                {step.title}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">{step.body}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </section>
+
+      <section
+        className={
+          isHost
+            ? "mt-10 grid gap-4 sm:grid-cols-3"
+            : "mx-auto mt-10 grid max-w-md gap-4"
+        }
+      >
+        {isHost ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <QrCode className="size-4 text-primary" />
+                Live session
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-muted-foreground">
+              <p>
+                Compulsory, right after the workshop. You open and close each
+                round, so nobody races ahead.
+              </p>
+              <Button nativeButton={false} render={<Link href="/host" />} variant="secondary" size="sm">
+                Start hosting
+              </Button>
+            </CardContent>
+          </Card>
+        ) : null}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <BookOpen className="size-4 text-primary" />
+              Self-paced library
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
+            <p>
+              Voluntary, for anyone who missed the workshop or wants to practise
+              before a customer call.
+            </p>
+            <Button nativeButton={false} render={<Link href="/library" />} variant="secondary" size="sm">
+              Open library
+            </Button>
+          </CardContent>
+        </Card>
+        {isHost ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <BarChart3 className="size-4 text-primary" />
+                Results
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-muted-foreground">
+              <p>
+                First-attempt pass rate per release, plus the questions that
+                most people failed.
+              </p>
+              <Button nativeButton={false} render={<Link href="/dashboard" />} variant="secondary" size="sm">
+                View results
+              </Button>
+            </CardContent>
+          </Card>
+        ) : null}
+      </section>
+    </AppShell>
   );
 }
