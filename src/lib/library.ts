@@ -1,7 +1,13 @@
 import { generateQuestions } from "./generate-quiz";
 import { parseRelease } from "./parse-release";
 import { createAdminClient } from "./supabase/server";
-import type { Feature, Question, ReleaseModule, Round } from "./types";
+import type {
+  Feature,
+  Question,
+  QuizDepth,
+  ReleaseModule,
+  Round,
+} from "./types";
 
 /**
  * The release library lives in Supabase, so an uploaded release and any later
@@ -30,6 +36,7 @@ type FeatureRow = {
   before_text: string | null;
   after_text: string | null;
   you_see: string | null;
+  who_it_helps: string | null;
   steps: string[];
   misconceptions: { wrong: string; truth?: string }[];
   limits: string[];
@@ -53,7 +60,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MODULE_COLUMNS =
   "id, owner_id, title, go_live, departments, pass_mark, status, created_at";
 const FEATURE_COLUMNS =
-  "id, position, name, what_changed, why, before_text, after_text, you_see, steps, misconceptions, limits, must_know";
+  "id, position, name, what_changed, why, before_text, after_text, you_see, who_it_helps, steps, misconceptions, limits, must_know";
 const QUESTION_COLUMNS =
   "id, feature_id, position, kind, stem, options, correct_index, included, warning";
 
@@ -66,6 +73,7 @@ function toFeature(row: FeatureRow): Feature {
     before: row.before_text ?? undefined,
     after: row.after_text ?? undefined,
     youSee: row.you_see ?? undefined,
+    whoItHelps: row.who_it_helps ?? undefined,
     steps: row.steps,
     misconceptions: row.misconceptions,
     limits: row.limits,
@@ -129,6 +137,7 @@ function assemble(
 export async function createDbModule(
   markdown: string,
   ownerId: string,
+  depth: QuizDepth = "basic",
 ): Promise<ReleaseModule> {
   const release = parseRelease(markdown);
   if (release.features.length === 0) {
@@ -136,7 +145,7 @@ export async function createDbModule(
       "No features found in that file. Each feature needs its own `## Feature: name` heading.",
     );
   }
-  const questions = generateQuestions(release);
+  const questions = generateQuestions(release, depth);
   if (questions.length === 0) {
     throw new Error(
       "The file was read, but there was nothing to build questions from. Add After, Misconception or Must-know lines to each feature.",
@@ -175,6 +184,7 @@ export async function createDbModule(
         before_text: feature.before ?? null,
         after_text: feature.after ?? null,
         you_see: feature.youSee ?? null,
+        who_it_helps: feature.whoItHelps ?? null,
         steps: feature.steps,
         misconceptions: feature.misconceptions,
         limits: feature.limits,

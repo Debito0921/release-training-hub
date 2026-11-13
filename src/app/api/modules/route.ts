@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAccount } from "@/lib/account";
 import { createBlankModule } from "@/lib/library";
 import { createModule, listModules } from "@/lib/store";
+import type { QuizDepth } from "@/lib/types";
 
 export async function GET() {
   const modules = (await listModules()).map((m) => ({
@@ -26,10 +27,14 @@ export async function POST(request: Request) {
 
   let markdown = "";
   let title = "";
+  // Awareness unless the host asks for the deeper set, because most people in
+  // the room only need to know the feature exists and who it helps.
+  let depth: QuizDepth = "basic";
   try {
     const body = await request.json();
     markdown = typeof body?.markdown === "string" ? body.markdown : "";
     title = typeof body?.title === "string" ? body.title : "";
+    if (body?.depth === "full") depth = "full";
   } catch {
     return NextResponse.json({ error: "We could not read that file." }, { status: 400 });
   }
@@ -53,7 +58,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const module = await createModule(markdown, account.id);
+    const module = await createModule(markdown, account.id, depth);
     return NextResponse.json({ module });
   } catch (error) {
     const message =

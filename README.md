@@ -24,6 +24,7 @@ Every month the product team ships enhancements to the HRMS, runs a workshop for
 **For the product team (host)**
 
 - **Turn a release note into a quiz.** Drop in a Markdown release note and the app splits it into rounds and generates multiple-choice questions — one round per feature.
+- **Pick how deep it goes.** *Awareness* (the default) asks about three plain things per feature — what changed, where you will see it, who it helps — and never about a number or a limit. *Daily user* asks everything, including the exact flow. The same file can be uploaded at either depth.
 - **Or write it by hand.** No file needed: start an empty release and type questions in. The "topic" you file each question under becomes its round.
 - **Edit before anyone sees it.** Reword any question, untick the ones you do not want to ask, add your own, then save it to the library. Correct answers are only ever shown to the host.
 - **Run the room.** Join code and QR code on screen, rounds opened and closed one at a time, live leaderboard.
@@ -41,6 +42,7 @@ These were the interesting calls, not the code:
 
 | Decision | Why |
 | --- | --- |
+| The default depth is "Awareness", not "everything in the note" | Sales, Support, Finance and HR are not going to use most features. Asking them how many days an approval waits before it escalates measures nothing except who was taking notes. What they do need is that the feature exists, roughly how it goes, and who it helps — so that is what the default quiz asks. |
 | Practice scores are never saved | The headline metric is the **first-attempt pass rate**. If practice counted, the number would only ever go up and would stop meaning anything. |
 | Players type their own name, Kahoot-style | Asking 20 non-technical colleagues to create accounts before a workshop kills the workshop. Identity is recovered afterwards by matching the typed name to the staff list. |
 | Host controls are hidden, not just blocked | A player who taps a host button and gets "access denied" has been told the product does not trust them. If it is not for you, you should not see it. |
@@ -59,7 +61,7 @@ Markdown release note ──▶ parse ──▶ rounds + questions ──▶ lib
 ```
 
 - **Release parsing** (`src/lib/parse-release.ts`) reads a structured Markdown template: one heading per feature, with what changed, who it affects, and the before/after behaviour.
-- **Question generation** (`src/lib/generate-quiz.ts`) is deterministic. It builds different question kinds out of the facts in the note — what changed, who is affected, what the old behaviour was — and flags anything it is unsure about so the host reviews it before saving.
+- **Question generation** (`src/lib/generate-quiz.ts`) is deterministic. It builds different question kinds out of the facts in the note — what changed, who is affected, what the old behaviour was — and flags anything it is unsure about so the host reviews it before saving. The chosen depth sets the order the kinds are tried in and a cap on how many a feature gets, so the shallow quiz is the same questions minus the fiddly ones, not a different quiz.
 - **The library** (`src/lib/library.ts`) stores releases, features and questions in Supabase, with a `draft` → `ready` status so an unfinished release cannot be hosted.
 - **Live sessions** (`src/lib/live.ts`) are rows in Postgres: the room, who joined, every answer. They started out in memory, which only works while one machine serves everybody — on a platform that runs several servers, a player's phone can land on one that never heard of the room. The database also settles the races one process used to settle for free: two phones claiming the same name, or one phone sending the same tap twice.
 - **Accounts and permissions** use Supabase Auth. The first account becomes the admin; everyone else registers as a player, and an admin promotes the product team to `host`. Middleware (`src/middleware.ts`) keeps host-only pages and APIs closed while everything a player needs stays open.

@@ -51,6 +51,14 @@ const LABELS: Record<string, string[]> = {
     "where to find it",
     "where it appears",
   ],
+  whoItHelps: [
+    "who it helps",
+    "who it's for",
+    "who its for",
+    "who is it for",
+    "who it affects",
+    "who benefits",
+  ],
   steps: [
     "steps",
     "steps to use it",
@@ -234,6 +242,9 @@ export function parseRelease(markdown: string): Release {
       case "youSee":
         current.youSee = value;
         break;
+      case "whoItHelps":
+        current.whoItHelps = value;
+        break;
       case "steps":
         // One line can carry the whole cycle: "Open X > fill in Y > Save".
         if (value) current.steps.push(...splitFlow(value));
@@ -284,6 +295,7 @@ function hasContent(f: Feature): boolean {
       f.before ||
       f.after ||
       f.youSee ||
+      f.whoItHelps ||
       f.steps.length ||
       f.misconceptions.length ||
       f.limits.length ||

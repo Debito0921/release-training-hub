@@ -8,6 +8,7 @@ Pass mark: 70
 
 What's new: One short sentence on what is different now.
 You'll see: What they will notice on screen, and where.
+Who it helps: Who is better off, and how. This is what a customer asks about.
 Steps: Open the page > fill in the details > Save > what the end user sees
 Instead of: The old way. This is never asked, it is used as a wrong answer.
 Remember: The one thing they must not get wrong.
@@ -16,6 +17,7 @@ Remember: The one thing they must not get wrong.
 
 What's new: One short sentence on what is different now.
 You'll see: What they will notice on screen, and where.
+Who it helps: Who is better off, and how.
 Steps: First step > second step > third step > what happens at the end
 Instead of: The old way.
 Remember: The one thing they must not get wrong.
@@ -24,6 +26,7 @@ Remember: The one thing they must not get wrong.
 
 What's new: One short sentence on what is different now.
 You'll see: What they will notice on screen, and where.
+Who it helps: Who is better off, and how.
 Instead of: The old way.
 Remember: The one thing they must not get wrong.
 
@@ -35,6 +38,10 @@ yourself are safe here.
 - One `##` heading per feature. Each one becomes a round in the quiz.
 - Four or five lines per feature is enough. This is a "what is coming" quiz,
   not an exam.
+- When you upload, pick **Awareness** or **Daily user**. Awareness asks about
+  three plain things per feature and never asks for a number or a limit; it is
+  the right choice for a whole-company workshop. Write the file the same way
+  either way: the same file can be uploaded twice, once at each depth.
 - Keep every line **under about 15 words**. The answers are read on a phone, and
   a long right answer next to short wrong ones is easy to spot without knowing
   anything.
@@ -61,6 +68,18 @@ somebody could really sit down and do it.
 - **About 5 words per step**, so the whole flow still fits on a phone.
 - End with what the **end user** or the next person sees, not with "Save". Half
   of all mistakes happen after the save.
+
+### `Who it helps:` is the line for the people who will never open the screen
+
+Sales and Support get asked "what does this do for me?" by customers, and
+Finance and HR only need to know a feature exists. One line answers all three:
+
+```
+Who it helps: Managers with a long queue, who clear a whole week in one go.
+```
+
+Name the **person** and say **what they stop having to do**. "Improves
+efficiency" makes nothing; the line above makes a question.
 
 ### Want a harder quiz?
 

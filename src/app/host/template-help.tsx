@@ -11,7 +11,8 @@ This quiz is only so staff know what is coming and what improved. It is not an e
 
 Rules:
 - One "##" heading per feature, named the way staff would say it.
-- Only these five lines per feature, in this order. No other lines.
+- Only these six lines per feature, in this order. No other lines.
+- "Who it helps:" names the person who is better off and what they stop having to do. Most of the room will never open the screen, so this is the line that matters most to them. Never write something vague like "improves efficiency".
 - Add the "Steps:" line for any feature where somebody has to do something, not just notice it. Separate the steps with ">", 3 to 5 steps, about 5 words each, and end with what the end user or the next person sees. Leave the line out for a feature that only changes what people see.
 - Keep every line under 15 words. The answers are read on a phone.
 - Be concrete where my notes are concrete: numbers, where it appears on screen, and whether the system does it automatically. Those are what make real questions.
@@ -30,6 +31,7 @@ Pass mark: 70
 
 What's new: <one short sentence on what is different now>
 You'll see: <what they will notice on screen, and where>
+Who it helps: <who is better off, and what they stop having to do>
 Steps: <first step> > <next step> > <next step> > <what the end user sees>
 Instead of: <the old way>
 Remember: <the one thing they must not get wrong>

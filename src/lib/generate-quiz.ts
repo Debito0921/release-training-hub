@@ -1,4 +1,4 @@
-import type { Question, Release, Round } from "./types";
+import type { Question, QuizDepth, Release, Round } from "./types";
 
 /** Small deterministic RNG so option order is stable between renders. */
 function hash(str: string): number {
@@ -36,7 +36,16 @@ const norm = (s: string) => s.trim().toLowerCase().replace(/[\s.,;:!?]+/g, " ");
 const MAX_PER_FEATURE = 4;
 /** A feature with a written flow earns extra questions about that flow. */
 const MAX_WITH_FLOW = 6;
+/**
+ * Awareness depth. Three questions a feature is about five minutes for a whole
+ * release, which is as much as a workshop can spare — and the point is that
+ * everyone knows the feature exists, not that they can recite it.
+ */
+const BASIC_PER_FEATURE = 3;
+const BASIC_WITH_FLOW = 4;
 const TARGET_OPTIONS = 4;
+/** Three answers, because two of them have to be plainly wrong to be useful. */
+const BASIC_OPTIONS = 3;
 /** How the steps of a flow are joined when shown as one answer. */
 const ARROW = " → ";
 /** Roughly 20 words. Longer than this is hard to read on a phone. */
@@ -68,6 +77,42 @@ const SWAPS: { find: RegExp; replace: string[] }[] = [
   { find: /\ban email\b/i, replace: ["a pop-up message", "a note in the system only"] },
 ];
 
+/**
+ * Plainly wrong answers, by question type.
+ *
+ * Everything else the file offers as a wrong answer is a *true* sentence about
+ * some other feature, which makes an awareness question unfair: four true
+ * statements, and only the feature name in the question to tell them apart.
+ * Somebody who understood the release still cannot answer that. These are
+ * written to be wrong about any feature, so the right answer stands out to
+ * anybody who was listening — and only to them.
+ */
+const PLAINLY_WRONG: Record<string, string[]> = {
+  behaviour: [
+    "Nothing changes — it works exactly as before.",
+    "It is switched off until a later release.",
+    "You still have to ask IT to do it for you.",
+  ],
+  whereToSee: [
+    "Nothing new appears on screen.",
+    "Only an administrator can see it.",
+    "It only shows up in the monthly report email.",
+  ],
+  whoItHelps: [
+    "Nobody yet — it only matters to the IT team.",
+    "Only staff who work outside the office.",
+    "Only new joiners in their first month.",
+  ],
+  misconception: [
+    "None of it applies until the next release.",
+    "It only works after IT turns it on for you.",
+  ],
+  mustKnow: [
+    "Nothing in particular — it behaves like the old version.",
+    "You have to ask IT before you use it.",
+  ],
+};
+
 /** Changes the number that carries the most meaning: usually the biggest one. */
 function numberSwaps(text: string): string[] {
   const found = [...text.matchAll(/\d+/g)];
@@ -88,7 +133,7 @@ function numberSwaps(text: string): string[] {
  * Without these, the only wrong answers available come from other features, and
  * those are so obviously off-topic that the quiz can be passed by elimination.
  */
-function nearMisses(correct: string): string[] {
+function nearMisses(correct: string, withNumbers: boolean): string[] {
   const out: string[] = [];
   for (const swap of SWAPS) {
     const hit = swap.find.exec(correct);
@@ -101,35 +146,51 @@ function nearMisses(correct: string): string[] {
       );
     }
   }
-  out.push(...numberSwaps(correct));
+  // Telling "14 days" from "24 days" is the kind of detail only a daily user
+  // needs, so awareness questions never turn on a number.
+  if (withNumbers) out.push(...numberSwaps(correct));
   return out;
 }
 
+/**
+ * Picks the wrong answers.
+ *
+ * `buckets` are in the order they should be used, best wrong answer first, and
+ * a later bucket is only opened when an earlier one runs dry. That order is the
+ * whole quality of a question, so it beats everything else — including making
+ * the answers a similar length.
+ */
 function buildOptions(
   correct: string,
-  pool: string[],
+  buckets: string[][],
   used: string[],
   seed: string,
+  opts: { want: number; matchLength: boolean },
 ): { options: string[]; correctIndex: number; warning?: string } {
   const taken = new Set([norm(correct), ...used.map(norm)]);
-  // Wrong answers close in length to the right one first. If the right answer
-  // is always the longest, it can be spotted without knowing anything.
-  const ranked = [...nearMisses(correct), ...pool]
-    .filter((text) => text && text.trim())
-    .map((text, order) => ({ text: text.trim(), order }))
-    .sort(
-      (a, b) =>
-        Math.abs(a.text.length - correct.length) -
-          Math.abs(b.text.length - correct.length) || a.order - b.order,
-    );
-
   const picked: string[] = [];
-  for (const candidate of ranked) {
-    const key = norm(candidate.text);
-    if (taken.has(key)) continue;
-    taken.add(key);
-    picked.push(candidate.text);
-    if (picked.length >= TARGET_OPTIONS - 1) break;
+
+  for (const bucket of buckets) {
+    // Within one bucket the wrong answers are equally good, so for the deeper
+    // quiz pick the ones closest in length: a right answer that is always the
+    // longest can be spotted without knowing anything.
+    const ordered = opts.matchLength
+      ? [...bucket].sort(
+          (a, b) =>
+            Math.abs(a.length - correct.length) -
+            Math.abs(b.length - correct.length),
+        )
+      : bucket;
+    for (const candidate of ordered) {
+      const text = candidate.trim();
+      if (!text) continue;
+      const key = norm(text);
+      if (taken.has(key)) continue;
+      taken.add(key);
+      picked.push(text);
+      if (picked.length >= opts.want - 1) break;
+    }
+    if (picked.length >= opts.want - 1) break;
   }
 
   const options = seededShuffle([correct, ...picked], seed);
@@ -143,7 +204,11 @@ function buildOptions(
   if (picked.length < 2) {
     result.warning =
       "Only a few wrong answers available. Add a “Remember:” line, or a second feature to the file, so this is harder to guess.";
-  } else if (correct.length > averageWrong * 1.6 && correct.length - averageWrong > 25) {
+  } else if (
+    opts.matchLength &&
+    correct.length > averageWrong * 1.6 &&
+    correct.length - averageWrong > 25
+  ) {
     result.warning =
       "The right answer is much longer than the wrong ones, which makes it easy to spot. Try shortening it.";
   } else if (Math.max(...options.map((o) => o.length)) > TOO_LONG) {
@@ -167,6 +232,19 @@ function orderVariants(steps: string[], seed: string): string[] {
   }
   out.push([steps[steps.length - 1], ...steps.slice(0, -1)].join(ARROW));
   return seededShuffle([...new Set(out)], seed);
+}
+
+/**
+ * Start, middle and end only. Somebody who does not use the feature every day
+ * should still know roughly how it goes, without having to remember each click.
+ */
+function outline(steps: string[]): string[] {
+  if (steps.length <= 3) return steps;
+  return [
+    steps[0],
+    steps[Math.floor((steps.length - 1) / 2)],
+    steps[steps.length - 1],
+  ];
 }
 
 function sentence(text: string): string {
@@ -198,6 +276,11 @@ const STEMS: Record<string, ((name: string) => string)[]> = {
     (n) => `You open the system after go-live. What do you notice for ${n}?`,
     (n) => `What will you actually see for ${n}?`,
   ],
+  whoItHelps: [
+    (n) => `A colleague asks you who ${n} is for. What do you tell them?`,
+    (n) => `Who is better off because of ${n}?`,
+    (n) => `A customer asks you what ${n} does for them. What do you say?`,
+  ],
   misconception: [
     (n) => `Which statement about ${n} is correct?`,
     (n) => `Somebody is unsure about ${n}. Which one is right?`,
@@ -210,6 +293,11 @@ const STEMS: Record<string, ((name: string) => string)[]> = {
     (n) => `What is the right order from start to finish for ${n}?`,
     (n) => `You use ${n} for the first time. Which order is correct?`,
     (n) => `Which order gets ${n} done correctly?`,
+  ],
+  /** Only start, middle and end, so nobody has to remember every click. */
+  stepOrderBasic: [
+    (n) => `Roughly, in what order does ${n} happen?`,
+    (n) => `Which rough order is right for ${n}?`,
   ],
   firstStep: [
     (n) => `What do you do first in ${n}?`,
@@ -224,34 +312,57 @@ function stemFor(kind: string, name: string, round: number): string {
   return variants[round % variants.length](name);
 }
 
-export function generateQuestions(release: Release): Question[] {
+export function generateQuestions(
+  release: Release,
+  depth: QuizDepth = "basic",
+): Question[] {
   const questions: Question[] = [];
+  const basic = depth === "basic";
 
   release.features.forEach((feature, fIndex) => {
     const others = release.features.filter((f) => f.id !== feature.id);
     const wrongBeliefs = feature.misconceptions.map((m) => m.wrong);
-    // Borrowed wrong answers, used after the near misses are exhausted. Lines
-    // from the same feature come first, because they are at least on topic.
+    /**
+     * Borrowed wrong answers, used after the near misses are exhausted. Only
+     * mistakes other features list, never what another feature actually does:
+     * a true line from elsewhere in the release reads as a second right answer.
+     */
     const borrowed = [
       ...wrongBeliefs,
       feature.before ?? "",
       ...others.flatMap((o) => o.misconceptions.map((m) => m.wrong)),
-      ...others.map((o) => o.after ?? ""),
     ];
-    const placePool = [
-      ...others.map((o) => o.youSee ?? ""),
-      ...borrowed,
-    ];
+    /**
+     * This feature's own wrong answers: the way it used to work, and the
+     * mistakes the author said people make. Both are wrong *about this
+     * feature*, which is what makes them fair to put next to the right answer.
+     */
+    const ownWrong = [...wrongBeliefs, feature.before ?? ""];
     const forFeature: Question[] = [];
     /** A flow of 3 steps or more is a cycle worth asking about on its own. */
     const flow = feature.steps.length >= 3 ? feature.steps : [];
-    const cap = flow.length ? MAX_WITH_FLOW : MAX_PER_FEATURE;
+    const cap = basic
+      ? flow.length
+        ? BASIC_WITH_FLOW
+        : BASIC_PER_FEATURE
+      : flow.length
+        ? MAX_WITH_FLOW
+        : MAX_PER_FEATURE;
+
+    /** One believable change to the right answer. */
+    const misses = (correct: string) => nearMisses(correct, !basic);
+    /**
+     * The plainly wrong answers, in a different order for each question, so the
+     * same sentence does not turn up in every round of the quiz.
+     */
+    const plainlyWrong = (kind: string, seed: string) =>
+      seededShuffle(PLAINLY_WRONG[kind] ?? [], seed);
 
     const add = (
       kind: Question["kind"],
       stem: string,
       correct: string,
-      pool: string[] = borrowed,
+      buckets: string[][],
       extraUsed: string[] = [],
     ) => {
       if (forFeature.length >= cap) return;
@@ -259,9 +370,10 @@ export function generateQuestions(release: Release): Question[] {
       const id = `q-${fIndex}-${kind}-${forFeature.length}`;
       const { options, correctIndex, warning } = buildOptions(
         correct,
-        pool,
+        [...buckets, plainlyWrong(kind, id)],
         extraUsed,
         id,
+        { want: basic ? BASIC_OPTIONS : TARGET_OPTIONS, matchLength: !basic },
       );
       if (options.length < 2) return;
       forFeature.push({
@@ -299,13 +411,13 @@ export function generateQuestions(release: Release): Question[] {
      * somebody could actually sit down and do it, instead of only recognising
      * the words, so the wrong answers are the same steps in a wrong order.
      */
-    const addOrder = (steps: string[]) => {
+    const addOrder = (steps: string[], stemKind: string) => {
       if (forFeature.length >= cap) return;
       const id = `q-${fIndex}-stepOrder-${forFeature.length}`;
       const correct = steps.join(ARROW);
       const picked = orderVariants(steps, id)
         .filter((v) => norm(v) !== norm(correct))
-        .slice(0, TARGET_OPTIONS - 1);
+        .slice(0, (basic ? BASIC_OPTIONS : TARGET_OPTIONS) - 1);
       if (picked.length < 2) return;
       const options = seededShuffle([correct, ...picked], id);
       forFeature.push({
@@ -313,7 +425,7 @@ export function generateQuestions(release: Release): Question[] {
         featureId: feature.id,
         featureName: feature.name,
         kind: "stepOrder",
-        stem: stemFor("stepOrder", feature.name, fIndex),
+        stem: stemFor(stemKind, feature.name, fIndex),
         options,
         correctIndex: options.findIndex((o) => norm(o) === norm(correct)),
         included: true,
@@ -324,93 +436,175 @@ export function generateQuestions(release: Release): Question[] {
       });
     };
 
-    // 1. What is new. The old way becomes one of the wrong answers.
-    const whatIsNew = feature.after ?? feature.whatChanged;
-    if (whatIsNew) {
-      add("behaviour", stemFor("behaviour", feature.name, fIndex), sentence(whatIsNew));
-    }
+    // What is new. The old way becomes one of the wrong answers.
+    const askWhatIsNew = () => {
+      const whatIsNew = sentence(feature.after ?? feature.whatChanged ?? "");
+      if (!whatIsNew) return;
+      add(
+        "behaviour",
+        stemFor("behaviour", feature.name, fIndex),
+        whatIsNew,
+        // Another feature's line is never borrowed here: that line is true, so
+        // it would leave two right-looking answers on the screen.
+        basic ? [ownWrong, misses(whatIsNew)] : [misses(whatIsNew), ownWrong],
+      );
+    };
 
-    // 2. What they will actually see, which is what staff ask first.
-    if (feature.youSee) {
+    // What they will actually see, which is what staff ask first.
+    const askWhereToSee = () => {
+      if (!feature.youSee) return;
+      const youSee = sentence(feature.youSee);
       add(
         "whereToSee",
         stemFor("whereToSee", feature.name, fIndex),
-        sentence(feature.youSee),
-        placePool,
+        youSee,
+        [misses(youSee), ownWrong],
       );
-    }
+    };
 
-    // 3. The full cycle, then one detail inside it. Knowing the order is what
-    //    tells us somebody can do the job, not just name it.
-    if (flow.length) {
-      addOrder(flow);
+    // Who is better off. Sales and Support get asked this by customers, and it
+    // is the one thing somebody who will never open the screen still needs.
+    const askWhoItHelps = () => {
+      if (!feature.whoItHelps) return;
+      const helps = sentence(feature.whoItHelps);
+      add(
+        "whoItHelps",
+        stemFor("whoItHelps", feature.name, fIndex),
+        helps,
+        [misses(helps)],
+      );
+    };
+
+    // The cycle in the right order: start to finish for a daily user, only
+    // start, middle and end for everybody else.
+    const askFlowOrder = () => {
+      if (!flow.length) return;
+      if (basic) addOrder(outline(flow), "stepOrderBasic");
+      else addOrder(flow, "stepOrder");
+    };
+
+    // One detail inside the flow. Steps are kept exactly as written: adding a
+    // full stop to the right answer only would give it away next to the others.
+    const askFlowDetail = () => {
+      if (!flow.length) return;
       const otherSteps = (keep: string[]) =>
         flow.filter((s) => !keep.includes(s));
-      // Steps are kept exactly as written: adding a full stop to the right
-      // answer only would give it away next to the other steps.
       if (fIndex % 2 === 0) {
         const at = Math.min(1, flow.length - 2);
         add(
           "nextStep",
           `In ${feature.name}, you have just done “${flow[at]}”. What comes next?`,
           flow[at + 1],
-          otherSteps([flow[at], flow[at + 1]]),
+          [otherSteps([flow[at], flow[at + 1]])],
         );
       } else {
         add(
           "firstStep",
           stemFor("firstStep", feature.name, fIndex),
           flow[0],
-          otherSteps([flow[0]]),
+          [otherSteps([flow[0]])],
         );
       }
-    }
+    };
 
-    // 4. A misconception, when the author wrote one: the wrong answers are then
-    //    mistakes people really make.
-    const first = feature.misconceptions.find((m) => m.truth);
-    if (first?.truth) {
+    // A misconception, when the author wrote one: the wrong answers are then
+    // mistakes people really make.
+    const withTruth = feature.misconceptions.find((m) => m.truth);
+    const askMisconception = () => {
+      if (!withTruth?.truth) return;
+      const truth = sentence(withTruth.truth);
       add(
         "misconception",
         stemFor("misconception", feature.name, fIndex),
-        sentence(first.truth),
+        truth,
+        basic ? [ownWrong, misses(truth)] : [misses(truth), ownWrong],
       );
-    }
+    };
 
-    // 5. The one line the author flagged as must-know.
-    if (feature.mustKnow.length) {
-      add("mustKnow", stemFor("mustKnow", feature.name, fIndex), sentence(feature.mustKnow[0]));
-    }
-
-    // 6. True or false. A spare misconception is the best source, and the
-    //    answer alternates by round so it is not always the same key.
-    const spare = feature.misconceptions.filter((m) => m.truth)[1] ?? first;
-    const useTruth = fIndex % 2 === 0;
-    if (spare?.truth) {
-      addTrueFalse(useTruth ? spare.truth : spare.wrong, useTruth);
-    } else if (useTruth && (feature.after ?? feature.whatChanged)) {
-      // Keep True and False both in play, or the answer becomes guessable.
-      addTrueFalse(
-        `from this release, ${clause((feature.after ?? feature.whatChanged)!)}`,
-        true,
+    // The one line the author flagged as must-know.
+    const askMustKnow = () => {
+      if (!feature.mustKnow.length) return;
+      const mustKnow = sentence(feature.mustKnow[0]);
+      add(
+        "mustKnow",
+        stemFor("mustKnow", feature.name, fIndex),
+        mustKnow,
+        basic ? [ownWrong, misses(mustKnow)] : [misses(mustKnow), ownWrong],
       );
-    } else if (feature.before) {
-      // The old way is no longer true.
-      addTrueFalse(`from this release, ${clause(feature.before)}`, false);
-    }
+    };
 
-    // 7. Limits, and a single step when the file had no full flow.
-    if (feature.limits.length) {
-      add("limit", stemFor("limit", feature.name, fIndex), sentence(feature.limits[0]));
-    }
-    if (!flow.length && feature.steps.length) {
-      add("step", stemFor("step", feature.name, fIndex), sentence(feature.steps[0]));
-    }
+    // True or false. A spare misconception is the best source, and the answer
+    // alternates by round so it is not always the same key.
+    const askTrueFalse = () => {
+      const spare = feature.misconceptions.filter((m) => m.truth)[1] ?? withTruth;
+      const useTruth = fIndex % 2 === 0;
+      if (spare?.truth) {
+        addTrueFalse(useTruth ? spare.truth : spare.wrong, useTruth);
+      } else if (useTruth && (feature.after ?? feature.whatChanged)) {
+        // Keep True and False both in play, or the answer becomes guessable.
+        addTrueFalse(
+          `from this release, ${clause((feature.after ?? feature.whatChanged)!)}`,
+          true,
+        );
+      } else if (feature.before) {
+        // The old way is no longer true.
+        addTrueFalse(`from this release, ${clause(feature.before)}`, false);
+      }
+    };
+
+    const askLimit = () => {
+      if (!feature.limits.length) return;
+      const limit = sentence(feature.limits[0]);
+      add("limit", stemFor("limit", feature.name, fIndex), limit, [
+        misses(limit),
+        borrowed,
+      ]);
+    };
+
+    // A single step, only useful when the file had no full flow.
+    const askSingleStep = () => {
+      if (flow.length || !feature.steps.length) return;
+      const step = sentence(feature.steps[0]);
+      add("step", stemFor("step", feature.name, fIndex), step, [
+        misses(step),
+        borrowed,
+      ]);
+    };
+
+    /**
+     * Order matters more than the cap: the cap just stops when enough is
+     * enough, so whatever is listed first is what a feature actually asks.
+     * Awareness leads with what changed and who it helps, and never asks about
+     * limits or exact numbers.
+     */
+    const plan = basic
+      ? [
+          askWhatIsNew,
+          askWhereToSee,
+          askWhoItHelps,
+          askFlowOrder,
+          askTrueFalse,
+          askMisconception,
+          askMustKnow,
+        ]
+      : [
+          askWhatIsNew,
+          askWhereToSee,
+          askFlowOrder,
+          askFlowDetail,
+          askMisconception,
+          askMustKnow,
+          askTrueFalse,
+          askWhoItHelps,
+          askLimit,
+          askSingleStep,
+        ];
+    for (const ask of plan) ask();
 
     // One usable question is not a round. Tell the author what to add.
     if (forFeature.length === 1) {
       forFeature[0].warning =
-        "Only one question could be built from this feature. Add a “You’ll see:” or “Remember:” line.";
+        "Only one question could be built from this feature. Add a “You’ll see:” or “Who it helps:” line.";
     }
 
     questions.push(...forFeature);

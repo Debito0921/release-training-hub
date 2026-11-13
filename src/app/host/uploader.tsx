@@ -9,6 +9,24 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { QuizDepth } from "@/lib/types";
+
+/**
+ * How hard the questions should be. Most of the room will never open the
+ * screen, so "Awareness" is the default and the deeper set is opt-in.
+ */
+const DEPTHS = [
+  {
+    id: "basic",
+    name: "Awareness",
+    hint: "About 3 easy questions a feature. For everybody in the room.",
+  },
+  {
+    id: "full",
+    name: "Daily user",
+    hint: "Every question, including limits and exact numbers.",
+  },
+] as const;
 
 export function HostUploader() {
   const router = useRouter();
@@ -16,6 +34,7 @@ export function HostUploader() {
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState("");
+  const [depth, setDepth] = useState<QuizDepth>("basic");
 
   async function submitMarkdown(markdown: string, label: string) {
     setLoading(true);
@@ -23,7 +42,7 @@ export function HostUploader() {
       const res = await fetch("/api/modules", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ markdown }),
+        body: JSON.stringify({ markdown, depth }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -106,6 +125,33 @@ export function HostUploader() {
             A markdown file with one heading per feature. Questions are built
             straight away, then you check them before anyone plays.
           </p>
+          <div className="mx-auto mt-6 max-w-md text-left">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              How deep should the questions go?
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {DEPTHS.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => setDepth(option.id)}
+                  aria-pressed={depth === option.id}
+                  className={`rounded-xl border p-3 text-left transition ${
+                    depth === option.id
+                      ? "border-primary bg-accent/50"
+                      : "border-border hover:bg-muted/50"
+                  }`}
+                >
+                  <span className="block text-sm font-semibold">
+                    {option.name}
+                  </span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    {option.hint}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="mt-5 flex flex-col items-center justify-center gap-2 sm:flex-row">
             <Button onClick={() => inputRef.current?.click()} disabled={loading}>
               <FileText className="size-4" />

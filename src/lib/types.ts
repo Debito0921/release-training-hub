@@ -20,6 +20,8 @@ export type Feature = {
   after?: string;
   /** What the person will actually see on screen: "You'll see:" in the file. */
   youSee?: string;
+  /** Who is better off because of this, and how: "Who it helps:" in the file. */
+  whoItHelps?: string;
   steps: string[];
   misconceptions: Misconception[];
   limits: string[];
@@ -34,10 +36,19 @@ export type Release = {
   features: Feature[];
 };
 
+/**
+ * How deep the questions go. Most people only need to know a release happened
+ * and roughly what it does for them, so `basic` is the default; `full` is for
+ * the people who will use the feature every day.
+ */
+export type QuizDepth = "basic" | "full";
+
 export type QuestionKind =
   | "behaviour"
   /** Where in the system the change shows up. */
   | "whereToSee"
+  /** Who is better off, which is what a colleague or customer asks about. */
+  | "whoItHelps"
   | "misconception"
   /** A single statement to accept or reject. */
   | "trueFalse"

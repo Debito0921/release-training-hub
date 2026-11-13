@@ -18,7 +18,13 @@ import {
 } from "./library";
 import { parseRelease } from "./parse-release";
 import { STAFF } from "./staff";
-import type { Answer, Department, ReleaseModule, Session } from "./types";
+import type {
+  Answer,
+  Department,
+  QuizDepth,
+  ReleaseModule,
+  Session,
+} from "./types";
 
 /**
  * Real releases live in Supabase (see library.ts) and so do real live rooms
@@ -56,8 +62,9 @@ export function getStore(): Store {
 export function createModule(
   markdown: string,
   ownerId: string,
+  depth: QuizDepth = "basic",
 ): Promise<ReleaseModule> {
-  return createDbModule(markdown, ownerId);
+  return createDbModule(markdown, ownerId, depth);
 }
 
 function demoModule(id: string): ReleaseModule | undefined {
