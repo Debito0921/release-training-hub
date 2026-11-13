@@ -477,6 +477,33 @@ export async function createBlankModule(
   return assemble(moduleRow, [], []);
 }
 
+/**
+ * Removes a release for good. Features, questions and rooms all hang off the
+ * module row and go with it, so a release that people have actually played is
+ * refused: deleting it would quietly take their results off the dashboard.
+ */
+export async function deleteDbModule(
+  moduleId: string,
+): Promise<{ problem?: string }> {
+  const db = createAdminClient();
+  const { data: played } = await db
+    .from("session_players")
+    .select("id, sessions!inner(module_id)")
+    .eq("sessions.module_id", moduleId)
+    .limit(1);
+  if (played?.length) {
+    return {
+      problem:
+        "People have already played this release, so deleting it would remove their results. It stays in the library.",
+    };
+  }
+  const { error } = await db.from("modules").delete().eq("id", moduleId);
+  if (error) {
+    return { problem: "Could not delete it. Please try again." };
+  }
+  return {};
+}
+
 export async function setDbModuleStatus(
   moduleId: string,
   status: "draft" | "ready",

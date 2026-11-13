@@ -12,6 +12,7 @@ import {
 } from "./live";
 import {
   createDbModule,
+  deleteDbModule,
   getDbModule,
   listDbModules,
   setDbQuestionIncluded,
@@ -80,6 +81,15 @@ export async function listModules(
 ): Promise<ReleaseModule[]> {
   const saved = await listDbModules(draftsFor);
   return [...saved, ...getStore().modules];
+}
+
+export async function deleteModule(
+  moduleId: string,
+): Promise<{ problem?: string }> {
+  if (demoModule(moduleId)) {
+    return { problem: "This is sample data, so it cannot be deleted." };
+  }
+  return deleteDbModule(moduleId);
 }
 
 export async function setQuestionIncluded(

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { listModules } from "@/lib/store";
+import { DeleteReleaseButton } from "./delete-release-button";
 import { HostReleaseButton } from "./host-release-button";
 
 export const dynamic = "force-dynamic";
@@ -111,6 +112,16 @@ export default async function LibraryPage() {
                     >
                       Edit the questions
                     </Button>
+                  ) : null}
+                  {/* Demo releases have no owner, so they are never offered. */}
+                  {m.ownerId &&
+                  (m.ownerId === account?.id || account?.role === "admin") ? (
+                    <DeleteReleaseButton
+                      moduleId={m.id}
+                      title={m.title}
+                      isDraft={m.status === "draft"}
+                      className="w-full"
+                    />
                   ) : null}
                 </div>
               </CardContent>

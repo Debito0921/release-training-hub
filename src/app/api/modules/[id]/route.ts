@@ -5,7 +5,7 @@ import {
   setDbModuleStatus,
   updateDbQuestion,
 } from "@/lib/library";
-import { getModule, setQuestionIncluded } from "@/lib/store";
+import { deleteModule, getModule, setQuestionIncluded } from "@/lib/store";
 
 export async function GET(
   _request: Request,
@@ -83,6 +83,22 @@ export async function POST(
   }
   const updated = await getModule(id);
   return NextResponse.json({ module: updated });
+}
+
+/** Throws away a release the host does not want in the library. */
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const gate = await openForEditing(id);
+  if ("refusal" in gate) return gate.refusal;
+
+  const { problem } = await deleteModule(id);
+  if (problem) {
+    return NextResponse.json({ error: problem }, { status: 400 });
+  }
+  return NextResponse.json({ ok: true });
 }
 
 export async function PATCH(
