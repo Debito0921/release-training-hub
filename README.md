@@ -4,6 +4,8 @@ A live, Kahoot-style training quiz that gets a whole company up to speed on a ne
 
 Built for an HR management system (HRMS) product team whose monthly releases have to be understood by Sales, Support, Finance and HR colleagues who are not product experts.
 
+**Live:** [release-training-hub.vercel.app](https://release-training-hub.vercel.app) — the library and the join screen are open to anyone; the host console and the results dashboard need a host account.
+
 > Status: working internal tool, built as a portfolio project. The release library, accounts and permissions live in Supabase; live sessions are run from a single host screen.
 
 ---
